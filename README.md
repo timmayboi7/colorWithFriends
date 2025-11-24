@@ -10,8 +10,7 @@ A mobile-first coloring book app heading to Android with vector-based illustrati
 
 ## Current assets
 - `docs/product-spec.md` – product/feature spec for the Android app.
-- `android/` – Jetpack Compose preview app with an interactive coloring canvas, region fills, undo/reset controls, quick palette swatches, and full-spectrum sliders to explore the painting experience.
-- `android/` – Jetpack Compose preview app with a palette grid, selection preview, and share intent stub to validate UI feel.
+- `android/` – Jetpack Compose preview app with an interactive coloring canvas, region fills, undo/reset controls, quick palette swatches, full-spectrum sliders, recent-color history, and long-press eyedropper sampling.
 - `index.html`, `style.css`, `main.js` – legacy web prototype kept only for reference; not part of the mobile build.
 
 ## Roadmap (high level)
