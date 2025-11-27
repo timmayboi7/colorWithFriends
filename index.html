@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color With Friends</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__content">
+      <h1>Color With Friends</h1>
+      <p>Pick a color, preview it, and share a link that opens with your selection.</p>
+      <div class="input-group">
+        <label for="name-input">Add your name (optional):</label>
+        <input id="name-input" type="text" placeholder="Your name" autocomplete="off" />
+      </div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel" aria-labelledby="palette-heading">
+      <div class="panel__header">
+        <h2 id="palette-heading">Palette</h2>
+        <p class="panel__hint">Click a swatch to preview it.</p>
+      </div>
+      <div id="palette" class="swatch-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="preview-heading">
+      <div class="panel__header">
+        <div>
+          <h2 id="preview-heading">Preview</h2>
+          <p class="panel__hint">Selected color and share link.</p>
+        </div>
+        <span id="friend-badge" class="badge" aria-live="polite"></span>
+      </div>
+      <div class="preview" role="img" aria-label="Color preview">
+        <div class="preview__color" id="preview-color"></div>
+        <div class="preview__info">
+          <div class="color-value" id="color-value">—</div>
+          <button id="copy-button" class="button" type="button">Copy share link</button>
+          <p class="share-hint" id="share-hint">Share a link to open this color.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Made to make sharing colors simple.</p>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
