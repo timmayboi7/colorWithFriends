@@ -3,7 +3,6 @@ package com.colorwithfriends.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +12,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +36,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +63,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,11 +80,6 @@ private data class Region(
     val label: String,
     val points: List<Offset>, // normalized 0f..1f
     val baseFill: Color
-)
-
-private data class PalettePreset(
-    val name: String,
-    val colors: List<Color>
 )
 
 private val sampleRegions = listOf(
@@ -104,49 +124,22 @@ private val sampleRegions = listOf(
         ),
         baseFill = Color(0xfff4f1de)
     )
-)
 
-private val defaultQuickPalette = listOf(
-    Color(0xffff6b6b),
-    Color(0xfff7b32b),
-    Color(0xff6bcf63),
-    Color(0xff3b82f6),
-    Color(0xff8b5cf6),
-    Color(0xffffffff),
-    Color(0xff111827)
-)
+private data class PaletteColor(val name: String, val color: Color, val hex: String)
 
-private val palettePresets = listOf(
-    PalettePreset(
-        name = "Sunset",
-        colors = listOf(
-            Color(0xfff72585),
-            Color(0xffb5179e),
-            Color(0xff7209b7),
-            Color(0xff4361ee),
-            Color(0xff4cc9f0)
-        )
-    ),
-    PalettePreset(
-        name = "Forest",
-        colors = listOf(
-            Color(0xff283618),
-            Color(0xff606c38),
-            Color(0xff8da674),
-            Color(0xffd9d9a8),
-            Color(0xffbc6c25)
-        )
-    ),
-    PalettePreset(
-        name = "Pastel",
-        colors = listOf(
-            Color(0xfffef6e4),
-            Color(0xfff3d2c1),
-            Color(0xff8bd3dd),
-            Color(0xfff582ae),
-            Color(0xffc4d7f2)
-        )
-    )
+private val palette = listOf(
+    PaletteColor("Sunset", Color(0xffff6b6b), "#FF6B6B"),
+    PaletteColor("Coral", Color(0xffff9f7a), "#FF9F7A"),
+    PaletteColor("Gold", Color(0xfffbbf24), "#FBBF24"),
+    PaletteColor("Mint", Color(0xff34d399), "#34D399"),
+    PaletteColor("Sea", Color(0xff22d3ee), "#22D3EE"),
+    PaletteColor("Sky", Color(0xff60a5fa), "#60A5FA"),
+    PaletteColor("Indigo", Color(0xff4f46e5), "#4F46E5"),
+    PaletteColor("Lilac", Color(0xffa78bfa), "#A78BFA"),
+    PaletteColor("Pink", Color(0xffec4899), "#EC4899"),
+    PaletteColor("Sand", Color(0xfff5e0b7), "#F5E0B7"),
+    PaletteColor("Olive", Color(0xff84cc16), "#84CC16"),
+    PaletteColor("Charcoal", Color(0xff1f2937), "#1F2937"),
 )
 
 class MainActivity : ComponentActivity() {
@@ -156,6 +149,7 @@ class MainActivity : ComponentActivity() {
             ColorWithFriendsTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     ColoringPreviewScreen()
+                    PaletteScreen()
                 }
             }
         }
@@ -164,26 +158,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun ColoringPreviewScreen() {
-    val defaultHsv = remember { defaultQuickPalette.first().toHsvComponents() }
-    var hue by remember { mutableStateOf(defaultHsv[0]) }
-    var saturation by remember { mutableStateOf(defaultHsv[1]) }
-    var value by remember { mutableStateOf(defaultHsv[2]) }
+    var hue by remember { mutableStateOf(210f) }
+    var saturation by remember { mutableStateOf(0.75f) }
+    var value by remember { mutableStateOf(0.85f) }
     var regionColors by remember { mutableStateOf(sampleRegions.associate { it.id to it.baseFill }) }
     val undoStack = remember { SnapshotStateList<Map<String, Color>>() }
-    val colorHistory = remember { SnapshotStateList<Color>() }
     var lastTouched by remember { mutableStateOf<String?>(null) }
-    var targetRegionId by remember { mutableStateOf<String?>(null) }
-    var quickPalette by remember { mutableStateOf(defaultQuickPalette) }
 
     val currentColor = Color.hsv(hue, saturation, value)
-
-    fun setCurrentColor(color: Color) {
-        val hsv = color.toHsvComponents()
-        hue = hsv[0]
-        saturation = hsv[1]
-        value = hsv[2]
-        rememberColor(colorHistory, color)
-    }
 
     Column(
         modifier = Modifier
@@ -214,56 +196,33 @@ private fun ColoringPreviewScreen() {
                     onReset = {
                         undoStack.clear()
                         regionColors = sampleRegions.associate { it.id to it.baseFill }
-                        colorHistory.clear()
                         lastTouched = null
-                        targetRegionId = null
-                        quickPalette = defaultQuickPalette
-                        setCurrentColor(defaultQuickPalette.first())
                     },
                     onUndo = {
                         if (undoStack.isNotEmpty()) {
                             regionColors = undoStack.removeLast()
-                            targetRegionId = computeNextUnfilled(sampleRegions, regionColors, targetRegionId)
                         }
                     },
                     canUndo = undoStack.isNotEmpty(),
                     onPaletteSelected = { selectedColor ->
-                        setCurrentColor(selectedColor)
+                        val hsv = FloatArray(3)
+                        android.graphics.Color.colorToHSV(selectedColor.toArgb(), hsv)
+                        hue = hsv[0]
+                        saturation = hsv[1]
+                        value = hsv[2]
                     },
-                    currentColor = currentColor,
-                    quickSwatches = quickPalette,
-                    presets = palettePresets,
-                    onPresetSelected = { preset ->
-                        if (preset.colors.isNotEmpty()) {
-                            quickPalette = preset.colors
-                            setCurrentColor(preset.colors.first())
-                        }
-                    }
+                    currentColor = currentColor
                 )
                 ColoringCanvas(
                     regions = sampleRegions,
                     regionColors = regionColors,
-                    targetRegionId = targetRegionId,
                     onRegionFilled = { regionId ->
                         undoStack.add(regionColors)
                         regionColors = regionColors.toMutableMap().apply { put(regionId, currentColor) }
                         lastTouched = sampleRegions.firstOrNull { it.id == regionId }?.label
-                        targetRegionId = computeNextUnfilled(sampleRegions, regionColors, targetRegionId)
-                        rememberColor(colorHistory, currentColor)
-                    },
-                    onRegionColorSampled = { sampledColor ->
-                        setCurrentColor(sampledColor)
                     }
                 )
                 CanvasLegend(regionColors)
-                ProgressSummary(
-                    regions = sampleRegions,
-                    regionColors = regionColors,
-                    targetRegionId = targetRegionId,
-                    onNextUnfilled = {
-                        targetRegionId = computeNextUnfilled(sampleRegions, regionColors, targetRegionId)
-                    }
-                )
                 Divider()
                 ColorControls(
                     hue = hue,
@@ -274,9 +233,6 @@ private fun ColoringPreviewScreen() {
                     onValueChange = { value = it },
                     currentColor = currentColor
                 )
-                ColorHistoryTray(history = colorHistory, onSwatchSelected = { swatch ->
-                    setCurrentColor(swatch)
-                })
                 lastTouched?.let {
                     Text(
                         text = "Most recent fill: $it",
@@ -293,9 +249,7 @@ private fun ColoringPreviewScreen() {
 private fun ColoringCanvas(
     regions: List<Region>,
     regionColors: Map<String, Color>,
-    targetRegionId: String?,
     onRegionFilled: (String) -> Unit,
-    onRegionColorSampled: (Color) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -311,81 +265,23 @@ private fun ColoringCanvas(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface)
                     .pointerInput(regions, regionColors) {
-                        detectTapGestures(
-                            onTap = { offset ->
-                                val size = this.size
-                                val normalized = Offset(
-                                    x = offset.x / max(1f, size.width),
-                                    y = offset.y / max(1f, size.height)
-                                )
-                                val hit = regions.firstOrNull { pointInPolygon(normalized, it.points) }
-                                if (hit != null) {
-                                    onRegionFilled(hit.id)
-                                }
-                            },
-                            onLongPress = { offset ->
-                                val size = this.size
-                                val normalized = Offset(
-                                    x = offset.x / max(1f, size.width),
-                                    y = offset.y / max(1f, size.height)
-                                )
-                                val hit = regions.firstOrNull { pointInPolygon(normalized, it.points) }
-                                if (hit != null) {
-                                    val sampled = regionColors[hit.id] ?: hit.baseFill
-                                    onRegionColorSampled(sampled)
-                                }
+                        detectTapGestures { offset ->
+                            val size = this.size
+                            val normalized = Offset(
+                                x = offset.x / max(1f, size.width),
+                                y = offset.y / max(1f, size.height)
+                            )
+                            val hit = regions.firstOrNull { pointInPolygon(normalized, it.points) }
+                            if (hit != null) {
+                                onRegionFilled(hit.id)
                             }
-                        )
+                        }
                     }
             ) {
-                drawRegions(
-                    regions = regions,
-                    regionColors = regionColors,
-                    targetRegionId = targetRegionId
-                )
+                drawRegions(regions = regions, regionColors = regionColors)
             }
         }
     }
-}
-
-@Composable
-private fun ColorHistoryTray(history: List<Color>, onSwatchSelected: (Color) -> Unit) {
-    if (history.isEmpty()) return
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "Recent colors", style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            history.takeLast(10).asReversed().forEach { swatch ->
-                Box(
-                    modifier = Modifier
-                        .height(38.dp)
-                        .weight(1f)
-                        .background(swatch, RoundedCornerShape(8.dp))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                        .pointerInput(swatch) { detectTapGestures { onSwatchSelected(swatch) } }
-                )
-            }
-        }
-        Text(
-            text = "Tip: long-press the canvas to eyedropper a region and reuse that color.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-private fun rememberColor(history: SnapshotStateList<Color>, color: Color, limit: Int = 10) {
-    history.remove(color)
-    history.add(color)
-    while (history.size > limit) {
-        history.removeFirst()
-    }
-}
-
-private fun Color.toHsvComponents(): FloatArray {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(this.toArgb(), hsv)
-    return hsv
 }
 
 @Composable
@@ -394,11 +290,18 @@ private fun PaletteAndActions(
     onUndo: () -> Unit,
     canUndo: Boolean,
     onPaletteSelected: (Color) -> Unit,
-    currentColor: Color,
-    quickSwatches: List<Color>,
-    presets: List<PalettePreset>,
-    onPresetSelected: (PalettePreset) -> Unit
+    currentColor: Color
 ) {
+    val quickSwatches = listOf(
+        Color(0xffff6b6b),
+        Color(0xfff7b32b),
+        Color(0xff6bcf63),
+        Color(0xff3b82f6),
+        Color(0xff8b5cf6),
+        Color(0xffffffff),
+        Color(0xff111827)
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
@@ -437,47 +340,6 @@ private fun PaletteAndActions(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "Preset palettes", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                presets.forEach { preset ->
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(80.dp)
-                            .pointerInput(preset) {
-                                detectTapGestures { onPresetSelected(preset) }
-                            },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(preset.name, style = MaterialTheme.typography.labelLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                preset.colors.take(5).forEach { swatch ->
-                                    Box(
-                                        modifier = Modifier
-                                            .height(18.dp)
-                                            .weight(1f)
-                                            .background(swatch, RoundedCornerShape(6.dp))
-                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "Tap to load ${preset.colors.size} colors",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -503,6 +365,73 @@ private fun CanvasLegend(regionColors: Map<String, Color>) {
                 Column {
                     Text(region.label, style = MaterialTheme.typography.bodyMedium)
                     Text(region.id, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun PaletteScreen() {
+    var selected by remember { mutableStateOf(palette.first()) }
+    val shareLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Color With Friends (Android Preview)",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Tap a swatch to preview a color. Share a link with the current selection.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(text = "Selected", style = MaterialTheme.typography.titleMedium)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        color = selected.color,
+                        shadowElevation = 4.dp,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {}
+                    Text(text = "${selected.name} ${selected.hex}", style = MaterialTheme.typography.bodyLarge)
+                    Button(onClick = {
+                        val uri = Uri.parse("https://example.com/color?hex=${selected.hex.removePrefix("#")}")
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, uri.toString())
+                        }
+                        shareLauncher.launch(Intent.createChooser(intent, "Share color"))
+                    }) {
+                        Text("Share selection")
+                    }
+                }
+            }
+
+            Divider()
+            Text(text = "Palette", style = MaterialTheme.typography.titleMedium)
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 120.dp),
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                items(palette) { swatch ->
+                    SwatchCard(
+                        paletteColor = swatch,
+                        isSelected = swatch == selected,
+                        onSelect = { selected = swatch }
+                    )
                 }
             }
         }
@@ -579,54 +508,7 @@ private fun SliderWithLabel(
     }
 }
 
-@Composable
-private fun ProgressSummary(
-    regions: List<Region>,
-    regionColors: Map<String, Color>,
-    targetRegionId: String?,
-    onNextUnfilled: () -> Unit
-) {
-    val unfilled = remember(regions, regionColors) {
-        regions.filter { region ->
-            (regionColors[region.id] ?: region.baseFill) == region.baseFill
-        }
-    }
-    val completion = ((regions.size - unfilled.size).toFloat() / max(1, regions.size)) * 100
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Progress", style = MaterialTheme.typography.titleSmall)
-        Text(
-            text = "${regions.size - unfilled.size} of ${regions.size} regions colored (${completion.toInt()}%)",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onNextUnfilled, enabled = unfilled.isNotEmpty()) {
-                Text(if (targetRegionId == null) "Next unfilled" else "Jump to unfilled")
-            }
-            if (targetRegionId != null) {
-                val label = regions.firstOrNull { it.id == targetRegionId }?.label ?: targetRegionId
-                Text(
-                    text = "Focus: $label",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-        }
-        if (unfilled.isNotEmpty()) {
-            Text(
-                text = "Unfilled: ${unfilled.joinToString { it.label }}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-private fun DrawScope.drawRegions(
-    regions: List<Region>,
-    regionColors: Map<String, Color>,
-    targetRegionId: String?
-) {
+private fun DrawScope.drawRegions(regions: List<Region>, regionColors: Map<String, Color>) {
     regions.forEach { region ->
         val scaledPoints = region.points.map { Offset(it.x * size.width, it.y * size.height) }
         val path = Path().apply {
@@ -637,17 +519,7 @@ private fun DrawScope.drawRegions(
             close()
         }
         drawPath(path = path, color = regionColors[region.id] ?: region.baseFill)
-        val strokeColor = if (region.id == targetRegionId) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.outlineVariant
-        }
-        val strokeWidth = if (region.id == targetRegionId) 6f else 2f
-        drawPath(
-            path = path,
-            color = strokeColor,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-        )
+        drawPath(path = path, color = MaterialTheme.colorScheme.outlineVariant, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
     }
 }
 
@@ -662,20 +534,31 @@ private fun pointInPolygon(point: Offset, polygon: List<Offset>): Boolean {
         if (cond) crossings++
     }
     return crossings % 2 == 1
-}
-
-private fun computeNextUnfilled(
-    regions: List<Region>,
-    regionColors: Map<String, Color>,
-    currentTarget: String?
-): String? {
-    val unfilled = regions.filter { region ->
-        (regionColors[region.id] ?: region.baseFill) == region.baseFill
+private fun SwatchCard(
+    paletteColor: PaletteColor,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .background(color = paletteColor.color, shape = RoundedCornerShape(8.dp))
+            )
+            Text(text = paletteColor.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(text = paletteColor.hex, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
-    if (unfilled.isEmpty()) return null
-    val currentIndex = unfilled.indexOfFirst { it.id == currentTarget }
-    val nextIndex = if (currentIndex == -1 || currentIndex == unfilled.lastIndex) 0 else currentIndex + 1
-    return unfilled[nextIndex].id
 }
 
 @Preview(showBackground = true)
@@ -683,5 +566,6 @@ private fun computeNextUnfilled(
 private fun PaletteScreenPreview() {
     ColorWithFriendsTheme {
         ColoringPreviewScreen()
+        PaletteScreen()
     }
 }
